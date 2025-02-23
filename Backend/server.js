@@ -168,21 +168,47 @@ app.delete('/cart/:id', async (req, res) => {
 });
 
     // Buy products in the cart (simulate purchase)
-    app.post("/cart/buy", async (req, res) => {
+    app.post('/checkout', async (req, res) => {
+      const { userName, userEmail, userAddress, cartItems } = req.body;
+    
+      // Validate request body
+      if (!userName || !userEmail || !userAddress || !cartItems) {
+        return res.status(400).json({ 
+          error: 'Missing required fields (userName, userEmail, userAddress, cartItems)', 
+          status: 'error', 
+          code: 400 
+        });
+      }
+    
       try {
-        // Fetch all items in the cart
-        const checkoutItems = await checkoutCollection.find().toArray();
-        if (checkoutItems.length === 0) {
-          return res.status(400).json({ error: 'Cart is empty', status: 'error', code: 400 });
-        }
-
-        // Simulate purchase (e.g., process payment, update inventory, etc.)
-        // For now, just clear the cart
-        await checkoutCollection.deleteMany({});
-
-        res.json({ message: 'Purchase successful', status: 'ok', code: 200 });
+        // Process the purchase (e.g., create an order, update inventory, etc.)
+        const order = {
+          userName,
+          userEmail,
+          userAddress,
+          items: cartItems,
+          total: cartItems.reduce((total, item) => total + (item.price * item.quantity), 0),
+          date: new Date(),
+        };
+    
+        // Save the order to the database
+        await checkoutCollection.insertOne(order);
+    
+        // Clear the user's cart (if applicable)
+        // await cartCollection.deleteMany({ userId: new ObjectId(userId) });
+    
+        res.json({ 
+          message: 'Purchase successful!', 
+          status: 'ok', 
+          code: 200 
+        });
       } catch (error) {
-        res.status(500).json({ error: 'Failed to process purchase', status: 'error', code: 500 });
+        console.error('Error during checkout:', error);
+        res.status(500).json({ 
+          error: 'Failed to complete checkout', 
+          status: 'error', 
+          code: 500 
+        });
       }
     });
 
