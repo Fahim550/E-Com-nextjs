@@ -38,6 +38,7 @@ async function run() {
     const db = client.db('E-com-backend'); // Replace with your database name
     const productCollection = db.collection("product"); // Collection for products
     const cartCollection = db.collection("cart"); // Collection for cart
+    const checkoutCollection = db.collection("checkout"); // Collection for checkout
 
     // Define a route for the root path
     app.get("/", (req, res) => {
@@ -137,40 +138,47 @@ app.get('/products/:id', async (req, res) => {
       }
     });
 
-  // app.post("/cart", jsonParser, async (req, res) => {
-  //     const cartCollection = await db.collection("cart")
-  //     await cartCollection.insertOne(req.body);
-  //     res.json({ cart: req.body, status: 'ok', code: 200 });
-  //   });
+  // Update cart item quantity
+app.put('/cart/:id', async (req, res) => {
+  const { id } = req.params;
+  const { quantity } = req.body;
 
-    // Delete a product from the cart
-    app.delete("/cart/:id", async (req, res) => {
-      const id = req.params.id;
+  try {
+    const updatedItem = await db.collection('cart').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: { quantity } },
+      { returnDocument: 'after' } // Return the updated document
+    );
+    res.json(updatedItem.value);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update quantity' });
+  }
+});
 
-      try {
-        const result = await cartCollection.deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount === 0) {
-          return res.status(404).json({ error: 'Product not found in cart', status: 'error', code: 404 });
-        }
+// Delete cart item
+app.delete('/cart/:id', async (req, res) => {
+  const { id } = req.params;
 
-        res.json({ message: 'Product removed from cart', status: 'ok', code: 200 });
-      } catch (error) {
-        res.status(500).json({ error: 'Failed to remove product from cart', status: 'error', code: 500 });
-      }
-    });
+  try {
+    await db.collection('cart').deleteOne({ _id: new ObjectId(id) });
+    res.json({ message: 'Item deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
 
     // Buy products in the cart (simulate purchase)
     app.post("/cart/buy", async (req, res) => {
       try {
         // Fetch all items in the cart
-        const cartItems = await cartCollection.find().toArray();
-        if (cartItems.length === 0) {
+        const checkoutItems = await checkoutCollection.find().toArray();
+        if (checkoutItems.length === 0) {
           return res.status(400).json({ error: 'Cart is empty', status: 'error', code: 400 });
         }
 
         // Simulate purchase (e.g., process payment, update inventory, etc.)
         // For now, just clear the cart
-        await cartCollection.deleteMany({});
+        await checkoutCollection.deleteMany({});
 
         res.json({ message: 'Purchase successful', status: 'ok', code: 200 });
       } catch (error) {
